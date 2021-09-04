@@ -6,6 +6,7 @@ editor_options:
 ---
 
 
+# libraries
 
 ```{r}
 
@@ -20,9 +21,13 @@ library(raster)
 
 ```
 
-# Define Roor Directory
+# Define Root Directory
  
 ```{r}
+
+coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab"
+
+root = 
 
 ```
 
