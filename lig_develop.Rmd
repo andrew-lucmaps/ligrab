@@ -151,8 +151,6 @@ execGRASS('r.in.gdal',
 
 
 
-```
-
 ```{r}
 
 
@@ -160,17 +158,31 @@ dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - 
 
 ff.out = paste0(lig_dir, "elevation/DEM_15m.tif")
 
+#read the raster file
 ligrg.readraster(ff.in = dem.in, obj.out = 'DEM_1m')
+
+#resample to 15m
 ligrg.resample(obj.in = 'DEM_1m', obj.out = 'DEM_15m', 15)
+
+#save the resampled raster
 ligrg.saveraster(obj.in = 'DEM_15m', ff.out = ff.out)
 
-
+# now denoise the data using the SAGA denoising algorithm
 DEM_15m_ffn = ff.out
 DEM_15m_DN_ffn =  paste0(lig_dir, "elevation/DEM_15m_DN.tif")
 
-
-
 ligrg.sagadenoise(ff.in = DEM_15m_ffn, ff.out =DEM_15m_DN_ffn )
+
+# now calculate the slopes
+
+ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+
+dir.out = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/"
+
+focal_med_size = 11
+
+ligrg.slopeclasses(ff.in, dir.out, focal_med_size = 11)
+
 
 
 ```

@@ -148,15 +148,13 @@ ligrg.sagadenoise = function(ff.in, ff.out, SIGMA = 0.8, ITER = 10 , ZONLY = 1){
 # A LIGrabber RGRASS Function: "ligrg.slopeclasses" - takes a raster object and creates a file
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11, ITER = 10 , ZONLY = 1){
-  
-  ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
-  dir.out = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/"
+ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11){
   
   
   
-  focal_med_size = 11
-  
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  # dir.out = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/"
+  # focal_med_size = 11
   slopes_ff.out = paste0(dir.out, "slopes_d", focal_med_size,".tif")
   slope_class_ff.out = paste0(dir.out, "slope_classes_d", focal_med_size,".tif")
   
@@ -168,12 +166,13 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11, ITER = 10 , Z
   slope_class_median_obj_name = paste0('slope_class_median_d',focal_med_size,'_')
   
   
-  
   #read the file
   ligrg.readraster(ff.in, obj.out = "_dem_to_be_classed_")
   
+  
   #list the raster to idenitfy the correct raster for slope classing
   dem <- execGRASS('g.list', type = 'raster', pattern = '*dem_to_be_classed*', intern =TRUE)
+  
   
   # run the slope aspect algorithm in GRASS
   execGRASS('r.slope.aspect', 
@@ -206,11 +205,7 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11, ITER = 10 , Z
             flags = 'overwrite')
   
   # obtain the object name of the integer form of the focal statistcs
-  slopeint <- 
-    execGRASS('g.list', type = 'raster', 
-              pattern = focal_stats_output_obj_int_name, intern =TRUE)
-  
-  
+  slopeint <- execGRASS('g.list', type = 'raster', pattern = focal_stats_output_obj_int_name, intern =TRUE)
   
   #reclass the focal statistics according to the slope reclassing rules
   execGRASS('r.reclass',
@@ -228,10 +223,11 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11, ITER = 10 , Z
             createopt = c('COMPRESS=DEFLATE','TILED=YES')
   )
   
-  
-  slopeclass <- 
-    execGRASS('g.list', type = 'raster', 
-              pattern = 'slope_class_median_obj_name*', intern =TRUE)
+  # obtain the object name of the 
+  slopeclass <- execGRASS('g.list', 
+                          type = 'raster', 
+              pattern = slope_class_median_obj_name, 
+              intern =TRUE)
   
   execGRASS('g.region', raster = slopeclass)
   
