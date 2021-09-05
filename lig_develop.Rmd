@@ -10,24 +10,207 @@ editor_options:
 
 ```{r}
 
+
+library(rgrass7)
 library(sf)
 library(tidyverse)
 library(raster)
 
 
+source("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/ligrab_utilities.R")
+
+
+
+```
+
+# Setup data directories
+
+```{r}
+
+coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab"
+
+dataroot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/"
+
+gis_dir = paste0(dataroot,"gis/")
+if (!dir.exists(gis_dir)){dir.create(gis_dir)}
+
+
+lig_dir = paste0(gis_dir,"layers/")
+if (!dir.exists(lig_dir)){dir.create(lig_dir)}
+
+
+setwd(wkg_dir)
+getwd()  
+
+
+options(stringsAsFactors = FALSE, scipen = 999)
+# library(raster)
+# library(sf)
+
+# library(here)
+
+
+
+
+sesh <- sessionInfo()
 
 
 
 
 ```
 
-# Define Root Directory
- 
+# set up data directories
+
 ```{r}
 
-coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab"
+ligrab_subdirs = c(
+  "cadastral",
+  "orthophoto",
+  "catchment",
+  "landcover",
+  "soil",
+  "geology",
+  "elevation",
+  "localauthorities",
+  "climate",
+  "derived",
+  "LUC",
+  "LUS",
+  "Other")
 
-root = 
+
+
+for (i in ligrab_subdirs){
+  subdir = paste0(lig_dir, i)
+  if(!dir.exists(subdir)){dir.create(subdir)}
+}
+
+
+```
+
+# Set up Grass and SAGA Functionality
+
+```{r}
+
+
+setwd(coderoot)
+getwd()
+grass_env_code_ffn =   file.path(getwd(), 'env_scripts', 'grass_env.R')
+file.exists(grass_env_code_ffn)
+
+source(file = grass_env_code_ffn)
+
+library(rgrass7)
+
+initGRASS(gisBase  = file.path('C:', 'OSGeo4W64', 'apps', 'grass', 'grass78'),
+          gisDbase = file.path('D:', 'Grass'),  location = 'ligrab', 
+          mapset   = "PERMANENT", override = TRUE)
+
+
+# library(rgrass7)
+
+Sys.setenv('SAGA' = file.path(Sys.getenv('OSGEO4W_ROOT'), 'apps', 'saga-ltr'))
+Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
+                          file.path(Sys.getenv('SAGA')),
+                          file.path(Sys.getenv('SAGA'), 'modules'),
+                          sep = .Platform$path.sep))
+
+
+```
+
+
+# Step 1 Import a DEM
+
+```{r}
+
+#=====================
+# Step 1. Import DEMS
+#=====================
+
+# root = 'D:/sharns/SFM_exports/DTM'
+# dem = 'D:/sharns/SFM_exports/DTM/Sharn_DTM_1m_v1A_2193.tif'
+
+root = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC"
+dem = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
+
+
+execGRASS('r.in.gdal',
+          input = dem,
+          output = 'DEM_1m',
+          flags = c('e', 'overwrite'))
+
+
+# create a region from the imported file  
+  execGRASS('g.region', raster = 'DEM_1m')
+
+
+
+
+```
+
+
+
+
+```
+
+```{r}
+
+
+dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
+
+ff.out = paste0(lig_dir, "elevation/DEM_15m.tif")
+
+ligrg.readraster(ff.in = dem.in, obj.out = 'DEM_1m')
+ligrg.resample(obj.in = 'DEM_1m', obj.out = 'DEM_15m', 15)
+ligrg.saveraster(obj.in = 'DEM_15m', ff.out = ff.out)
+
+
+DEM_15m_ffn = ff.out
+DEM_15m_DN_ffn =  paste0(lig_dir, "elevation/DEM_15m_DN.tif")
+
+
+
+ligrg.sagadenoise(ff.in = DEM_15m_ffn, ff.out =DEM_15m_DN_ffn )
+
+
+```
+
+
+
+# Step 2 Resample DEM to desired Scale
+
+```{r}
+
+
+# make the resolution of the imported refion be 5 m
+execGRASS('g.region', res = '5', flags = c('a'))
+
+# r.resamp.stats: Resamples raster map layers to a coarser grid using aggregation
+
+#resample 1m DEM to 5m  
+execGRASS('r.resamp.stats',
+          input = 'DEM_1m',
+          output ='DEM_5m',
+          method = 'median',
+          flags = 'overwrite')
+
+
+```
+
+# Step 3 Save the File 
+
+```{r}
+
+#save the DEM
+execGRASS('r.out.gdal', 
+          input = "DEM_5m",
+          output = file.path(root, 'DEM_5m.tif'),
+          format = 'GTiff', flags = c('c', 'overwrite'),
+          createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+
+#  # set the region (is this nec?)  
+# execGRASS('g.region', raster = 'DEM_1m')
+
 
 ```
 
