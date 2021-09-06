@@ -111,7 +111,7 @@ library(rgrass7)
 
 initGRASS(gisBase  = file.path('C:', 'OSGeo4W64', 'apps', 'grass', 'grass78'),
           gisDbase = file.path('D:', 'Grass'),  location = 'ligrab', 
-          mapset   = "PERMANENT", override = TRUE)
+          mapset   = "PERMANENT", override = T)
 
 
 # library(rgrass7)
@@ -126,40 +126,11 @@ Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
 ```
 
 
-# Old Step 1 Import a DEM
-
-```{r}
-
-#=====================
-# Step 1. Import DEMS
-#=====================
-
-# root = 'D:/sharns/SFM_exports/DTM'
-# dem = 'D:/sharns/SFM_exports/DTM/Sharn_DTM_1m_v1A_2193.tif'
-
-root = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC"
-dem = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
-
-
-execGRASS('r.in.gdal',
-          input = dem,
-          output = 'DEM_1m',
-          flags = c('e', 'overwrite'))
-
-
-# create a region from the imported file  
-  execGRASS('g.region', raster = 'DEM_1m')
-
-
-
-
-```
-
-
 
 # Step 1. Copy the DEM to the elevation directory
 
 ```{r}
+
 
 
 
@@ -267,13 +238,13 @@ ligrg.RMS(relief.class.ff.in, slope.class.ff.in, focal_size = 11, area_thresh)
 ```
 
 
-# Steps 1 through 6 in one hit
-
+# Step 8 Slope Length
 ```{r}
 
 
+dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/DEM_resamp_5m.tif"
 
-
+ligrsaga.slopelength(dem.in)
 
 
 
@@ -317,6 +288,36 @@ ligrg.slopeclasses(ff.in, dir.out, focal_med_size = 11)
 # now calculate the relief classes
 
 ligrg.reliefclasses(ff.in, ff.out = NULL, focal_med_size = 11, reliefclass_ruleset = reliefclass_ruleset)
+
+```
+
+
+# Old Step 1 Import a DEM
+
+```{r}
+
+#=====================
+# Step 1. Import DEMS
+#=====================
+
+# root = 'D:/sharns/SFM_exports/DTM'
+# dem = 'D:/sharns/SFM_exports/DTM/Sharn_DTM_1m_v1A_2193.tif'
+
+root = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC"
+dem = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
+
+
+execGRASS('r.in.gdal',
+          input = dem,
+          output = 'DEM_1m',
+          flags = c('e', 'overwrite'))
+
+
+# create a region from the imported file  
+  execGRASS('g.region', raster = 'DEM_1m')
+
+
+
 
 ```
 

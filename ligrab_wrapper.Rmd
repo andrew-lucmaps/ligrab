@@ -1,0 +1,112 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+
+
+library(rgrass7)
+library(sf)
+library(tidyverse)
+library(raster)
+
+
+source("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/ligrab_utilities.R")
+
+
+setwd(coderoot)
+getwd()
+grass_env_code_ffn =   file.path(getwd(), 'env_scripts', 'grass_env.R')
+file.exists(grass_env_code_ffn)
+
+source(file = grass_env_code_ffn)
+
+library(rgrass7)
+
+initGRASS(gisBase  = file.path('C:', 'OSGeo4W64', 'apps', 'grass', 'grass78'),
+          gisDbase = file.path('D:', 'Grass'),  location = 'ligrab', 
+          mapset   = "PERMANENT", override = TRUE)
+
+
+# library(rgrass7)
+
+Sys.setenv('SAGA' = file.path(Sys.getenv('OSGEO4W_ROOT'), 'apps', 'saga-ltr'))
+Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
+                          file.path(Sys.getenv('SAGA')),
+                          file.path(Sys.getenv('SAGA'), 'modules'),
+                          sep = .Platform$path.sep))
+
+
+```
+
+
+```{r}
+
+dataroot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/"
+
+```
+
+
+
+
+```{r}
+
+
+gis_dir = paste0(dataroot,"gis/")
+if (!dir.exists(gis_dir)){dir.create(gis_dir)}
+
+
+lig_dir = paste0(gis_dir,"layers/")
+if (!dir.exists(lig_dir)){dir.create(lig_dir)}
+
+# 
+# setwd(wkg_dir)
+# getwd()  
+
+
+options(stringsAsFactors = FALSE, scipen = 999)
+# library(raster)
+# library(sf)
+
+
+ligrab_subdirs = c(
+  "cadastral",
+  "orthophoto",
+  "catchment",
+  "landcover",
+  "soil",
+  "geology",
+  "elevation",
+  "localauthorities",
+  "climate",
+  "derived",
+  "LUC",
+  "LUS",
+  "Other")
+
+
+
+for (i in ligrab_subdirs){
+  subdir = paste0(lig_dir, i)
+  if(!dir.exists(subdir)){dir.create(subdir)}
+}
+
+
+
+
+```
+
+```{r}
+
+dem_ffn = paste0(dataroot, "GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif")
+file.exists(dem_ffn)
+
+ligrg.allsteps(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000)
+  
+  
+```
+

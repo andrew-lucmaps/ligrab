@@ -247,7 +247,7 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11,slopeclass_rul
   
   # output the slopes raster to a output raster geotiff file
   execGRASS('r.out.gdal', 
-            input = slopes, 
+            input = 'slope_', 
             output = slopes_ff.out, 
             format = 'GTiff', flags = c('c', 'overwrite'),
             createopt = c('COMPRESS=DEFLATE','TILED=YES')
@@ -259,7 +259,7 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11,slopeclass_rul
   #                         pattern = slope_class_median_obj_name, 
   #                         intern =TRUE)
   
-  execGRASS('g.region', raster = slopeclass)
+  execGRASS('g.region', raster = slope_class_median_obj_name)
   
   execGRASS('r.out.gdal', 
             input = slope_class_median_obj_name, 
@@ -294,7 +294,7 @@ ligrg.reliefclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, relief
   
   if (is.null(ff.out)){ff.out = paste0(dirname(ff.in), "/relief_classes_d",focal_med_size,".tif")}
   
-  
+  dir.out = paste0(dirname(ff.in),"/")
   slopes_ff.out = paste0(dir.out, "slopes_d", focal_med_size,".tif")
   slope_class_ff.out = paste0(dir.out, "slope_classes_d", focal_med_size,".tif")
   
@@ -400,11 +400,11 @@ ligrg.RMS = function(relief.class.ff.in, slope.class.ff.in, focal_size = 11,
   }
   
   #create default output file names
-  if (is.null(rms.class.rast.ff.out)){rms.class.rast.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_d",focal_med_size,".tif")}
-  if (is.null(rms.class.vect.ff.out)){rms.class.vect.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_vect_d",focal_med_size,".shp")}
+  if (is.null(rms.class.rast.ff.out)){rms.class.rast.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_d",focal_size,".tif")}
+  if (is.null(rms.class.vect.ff.out)){rms.class.vect.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_vect_d",focal_size,".shp")}
   
   #create the clean RMS output file name
-  rms.clean.class.rast.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_clean_d",focal_med_size,".tif")
+  rms.clean.class.rast.ff.out = paste0(dirname(relief.class.ff.in), "/RMS_clean_d",focal_size,".tif")
   
   # string labels for the input data set object names
   relcl = "relief_classes_for_RMS"
@@ -524,12 +524,12 @@ ligrsaga.fillsinks = function(ff.dem.in, minslope = 0.1){
 
   
   # ff.dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_resamp_5m.tif"
-  ff.filled.out = paste0(tools::file_path_sans_ext(ff.in),"_filled.sdat")
-  ff.fdir.out = paste0(tools::file_path_sans_ext(ff.in),"_flowdir.sdat")
-  ff.wshed.out = paste0(tools::file_path_sans_ext(ff.in),"_wshed.sdat")
-  ff.minslope.out = paste0(tools::file_path_sans_ext(ff.in),"_minslope.sdat")
+  ff.filled.out = paste0(tools::file_path_sans_ext(ff.dem.in),"_filled.sdat")
+  ff.fdir.out = paste0(tools::file_path_sans_ext(ff.dem.in),"_flowdir.sdat")
+  ff.wshed.out = paste0(tools::file_path_sans_ext(ff.dem.in),"_wshed.sdat")
+  ff.minslope.out = paste0(tools::file_path_sans_ext(ff.dem.in),"_minslope.sdat")
   
-  ff.filled.out.tif = paste0(tools::file_path_sans_ext(ff.in),"_filled.tif")
+  ff.filled.out.tif = paste0(tools::file_path_sans_ext(ff.dem.in),"_filled.tif")
   
 # create a list of the parameters for the SAGA command
 args_str = c(
@@ -557,7 +557,7 @@ ligrsaga.execandsave(ff.filled.out, ff.filled.out.tif)
 # A LIGrabber SAGA Function: "ligrsaga.slopelength" - 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-function(ff.in, ff.out){
+ligrsaga.slopelength = function(ff.in){
   
   
   # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_resamp_5m.tif"
@@ -567,7 +567,7 @@ function(ff.in, ff.out){
   args_str = c(
     'ta_hydrology', '7',
     '-DEM', paste0("\"", ff.in,"\""),
-    '-LENGTH',  paste0("\"", ff.out,"\""))
+    '-LENGTH',  paste0("\"", ff.out.sdat,"\""))
   
   str = 'saga_cmd'
   for (i in args_str){str = paste0(str,' ',i)}
@@ -689,15 +689,20 @@ ligrsaga.BTA = function(ff.in, thresh = 5){
 ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000){
   
   
-  dem_ffn = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
-  lig_dir = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/"
-  dem_rsmpl_res = 5
-  focal_dist = 11
-  area_thresh = 5000
+  
+  
+  # 
+  # dem_ffn = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
+  # lig_dir = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/"
+  # dem_rsmpl_res = 5
+  # focal_dist = 11
+  # area_thresh = 5000
   
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   # Step 1. Copy the DEM to the elevation directory
   #+++++++++++++++++++++++++++++++++++++++++++++++++
+  
+  print('----> Starting Step 1. Copying the DEM')
   
   dem.orig.ff.out = paste0(lig_dir, 'elevation/DEM_orig.tif')
   
@@ -711,6 +716,7 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   # Step 2. Resample the Raster
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
+  print('----> Starting Step 2. Resampling the raster')
   
   ff.in = dem.orig.ff.out
   rsmpld.dem.ff.out = paste0(lig_dir, "elevation/DEM_resamp_",dem_rsmpl_res,"m.tif")
@@ -719,7 +725,7 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   dst_obj_name = 'dem_res'
   
   #read the raster file
-  ligrg.readraster(ff.in = dem.in, obj.out = src_obj_name)
+  ligrg.readraster(ff.in, obj.out = src_obj_name)
   
   #resample to  target resolution
   ligrg.resample(obj.in = src_obj_name, obj.out = dst_obj_name, dem_rsmpl_res)
@@ -731,6 +737,8 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   # Step 3. denoise the resampled DEM
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
+  print('----> Starting Step 3. denoise the resampled DEM')
+  
   denoised.dem.ff.out = paste0(tools::file_path_sans_ext(rsmpld.dem.ff.out),"_DN.tif")
   
   ligrg.sagadenoise(ff.in = rsmpld.dem.ff.out, ff.out = denoised.dem.ff.out )
@@ -738,6 +746,10 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   # Step 4. Get the slope classes
   #+++++++++++++++++++++++++++++++++++++++++++++++++
+  # browser()
+  
+  print('----> Starting Step 4. Getting the Slope Classes')
+  
   
   dir.out = paste0(dirname(denoised.dem.ff.out),"/")
   ligrg.slopeclasses(denoised.dem.ff.out, dir.out, focal_med_size = focal_dist)
@@ -745,6 +757,10 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   # Step 5. Get the relief classes
   #+++++++++++++++++++++++++++++++++++++++++++++++++
+  # browser()
+  
+  print('----> Starting Step 5. Getting the Relief Classes')
+  
   
   ligrg.reliefclasses(denoised.dem.ff.out,  focal_med_size = focal_dist)
   
@@ -753,8 +769,11 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   # Step 6. Do the RMS Calculation
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
-  relief.class.ff.in = paste0(lig_dir, "elevation/relief_classes_d",focal_size,".tif")
-  slope.class.ff.in = paste0(lig_dir, "elevation/slope_classes_d",focal_size,".tif")
+  print('----> Starting Step 6. RMS Calculation')
+  
+  
+  relief.class.ff.in = paste0(lig_dir, "elevation/relief_classes_d",focal_dist,".tif")
+  slope.class.ff.in = paste0(lig_dir, "elevation/slope_classes_d",focal_dist,".tif")
   ligrg.RMS(relief.class.ff.in, slope.class.ff.in, focal_size = focal_dist, area_thresh = area_thresh)
   
   
@@ -762,17 +781,34 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   # Step 7. Fill the Sinks
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
+  print('----> Starting Step 7. Filling the sinks')
+  
+  
   ligrsaga.fillsinks(denoised.dem.ff.out, minslope = 0.1)
   
   
   #+++++++++++++++++++++++++++++++++++++++++++++++++
-  # Step 8. Do the Basic Terrain Analysis on the sink filled data
+  # Step 8. Slope Length
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
+  print('----> Starting Step 8. Slope Length')
+  
+  ligrsaga.slopelength(denoised.dem.ff.out)
+  
+  
+  #+++++++++++++++++++++++++++++++++++++++++++++++++
+  # Step 9. Do the Basic Terrain Analysis on the sink filled data
+  #+++++++++++++++++++++++++++++++++++++++++++++++++
+  
+  print('----> Starting Step 9. Basic Terrain Analysis')
   
   ff.filled.in = paste0(tools::file_path_sans_ext(denoised.dem.ff.out),"_filled.tif")
   ligrsaga.BTA(ff.filled.in, thresh = 5)
   
+  
+  print("==============================================================================================")
+  print("----------       Finished libgrab allsteps!    ----------------------------------------------")
+  print("==============================================================================================")
   
   }
 
