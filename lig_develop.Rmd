@@ -31,6 +31,13 @@ coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors 
 
 dataroot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/"
 
+
+ruleset_folder = paste0(coderoot, "rulesets/")
+slopeclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_reclass_slope-sharnrules_x10.txt')
+reliefclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_Relief_55m_diameter.txt')
+
+
+
 gis_dir = paste0(dataroot,"gis/")
 if (!dir.exists(gis_dir)){dir.create(gis_dir)}
 
@@ -119,7 +126,7 @@ Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
 ```
 
 
-# Step 1 Import a DEM
+# Old Step 1 Import a DEM
 
 ```{r}
 
@@ -150,28 +157,152 @@ execGRASS('r.in.gdal',
 
 
 
+# Step 1. Copy the DEM to the elevation directory
 
 ```{r}
 
 
+
 dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif"
 
-ff.out = paste0(lig_dir, "elevation/DEM_15m.tif")
+ff.out = paste0(lig_dir, "elevation/DEM_1m.tif")
 
 #read the raster file
-ligrg.readraster(ff.in = dem.in, obj.out = 'DEM_1m')
+ligrg.readraster(ff.in = dem.in, obj.out = 'DEM_in')
+
+#save it to the elevation directory
+ligrg.saveraster(obj.in = 'DEM_in', ff.out = ff.out)
+
+
+
+```
+
+# Step 2. Resample the Raster
+
+```{r}
+
+target_res = 5
+
+ff.in = paste0(lig_dir, "elevation/DEM_1m.tif")
+ff.out = paste0(lig_dir, "elevation/DEM_resamp_",target_res,"m.tif")
+
+src_obj_name = 'dem'
+dst_obj_name = 'dem_res'
+
+#read the raster file
+ligrg.readraster(ff.in = dem.in, obj.out = src_obj_name)
 
 #resample to 15m
-ligrg.resample(obj.in = 'DEM_1m', obj.out = 'DEM_15m', 15)
+ligrg.resample(obj.in = src_obj_name, obj.out = dst_obj_name, target_res)
 
 #save the resampled raster
-ligrg.saveraster(obj.in = 'DEM_15m', ff.out = ff.out)
+ligrg.saveraster(obj.in = dst_obj_name, ff.out = ff.out)
 
-# now denoise the data using the SAGA denoising algorithm
-DEM_15m_ffn = ff.out
-DEM_15m_DN_ffn =  paste0(lig_dir, "elevation/DEM_15m_DN.tif")
+```
 
-ligrg.sagadenoise(ff.in = DEM_15m_ffn, ff.out =DEM_15m_DN_ffn )
+# Step 3. denoise the resampled DEM
+
+```{r}
+
+target_res = 5
+
+ff.in = paste0(lig_dir, "elevation/DEM_resamp_",target_res,"m.tif")
+ff.out = paste0(tools::file_path_sans_ext(ff.in),"_DN.tif")
+
+ligrg.sagadenoise(ff.in = ff.in, ff.out =ff.out )
+
+
+```
+
+# Step 4. Get the slope classes
+
+```{r}
+
+
+
+# now calculate the slope classes
+
+ff.in = paste0(lig_dir, "elevation/DEM_resamp_",target_res,"m_DN.tif")
+dir.out = paste0(dirname(ff.in),"/")
+focal_med_size = 11
+
+ligrg.slopeclasses(ff.in, dir.out, focal_med_size = 11)
+
+```
+
+# Step 5. Get the relief classes
+
+```{r}
+
+
+
+# now calculate the slope classes
+
+ff.in = paste0(lig_dir, "elevation/DEM_resamp_",target_res,"m_DN.tif")
+focal_med_size = 11
+
+ligrg.reliefclasses(ff.in,  focal_med_size = focal_med_size)
+
+
+```
+
+# Step 6. Do the RMS Calculation
+
+```{r}
+
+
+# relief.class.ff.in = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/relief_classes_d11.tif")
+# 
+# slope.class.ff.in = paste0(("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/slope_classes_d11.tif"))
+
+focal_size = 11
+
+relief.class.ff.in = paste0(lig_dir, "elevation/relief_classes_d",focal_size,".tif")
+slope.class.ff.in = paste0(lig_dir, "elevation/slope_classes_d",focal_size,".tif")
+# ff.out = paste0(lig_dir, "elevation/RMS_d",focal_size,".tif")
+
+ligrg.RMS(relief.class.ff.in, slope.class.ff.in, focal_size = 11, area_thresh)
+  
+
+```
+
+
+# Steps 1 through 6 in one hit
+
+```{r}
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+# Step 1. Copy the DEM to the elevation directory
+
+```{r}
+
+
+```
+
+# Step 1. Copy the DEM to the elevation directory
+
+```{r}
+
+
+```
+
+```{r}
+
+
 
 # now calculate the slopes
 
@@ -183,13 +314,15 @@ focal_med_size = 11
 
 ligrg.slopeclasses(ff.in, dir.out, focal_med_size = 11)
 
+# now calculate the relief classes
 
+ligrg.reliefclasses(ff.in, ff.out = NULL, focal_med_size = 11, reliefclass_ruleset = reliefclass_ruleset)
 
 ```
 
 
 
-# Step 2 Resample DEM to desired Scale
+# Old Step 2 Resample DEM to desired Scale
 
 ```{r}
 
@@ -209,7 +342,7 @@ execGRASS('r.resamp.stats',
 
 ```
 
-# Step 3 Save the File 
+# Old Step 3 Save the File 
 
 ```{r}
 
