@@ -80,7 +80,23 @@ ligrg.saveraster = function(obj.in, ff.out,  format = 'GTiff', flags = c('c', 'o
 # A LIGrabber RGRASS Function: "ligrg.sagadenoise" - takes a raster object and creates a file
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ligrg.sagadenoise = function(ff.in, ff.out, SIGMA = 0.8, ITER = 10 , ZONLY = 1){
+# This can be accessed from the SAGA Menu by
+#
+# Geoprocessing > Grid > Filter > Mesh Denoise
+#
+# The Arguments (and default values) — [argument in function below] are:
+# -SIGMA : Threshold(0.9) — 
+# -ITER  : Number of Iterations for Normal Updating (0.9) — 
+# -ZONLY : Only Z-Direction Position is Updated (1)
+#
+#
+
+
+
+
+
+ligrg.sagadenoise = function(ff.in, ff.out, SIGMA = 0.9, ITER = 5 , ZONLY = 1){
+  
   
   
   root = dirname(ff.in)
@@ -686,7 +702,7 @@ ligrsaga.BTA = function(ff.in, thresh = 5){
 # A LIGrabber RGRASS Function: "ligrg.allsteps" - 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000){
+ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000, denoise = F){
   
   
   
@@ -737,11 +753,19 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   # Step 3. denoise the resampled DEM
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   
+  if (denoise){
+    
   print('----> Starting Step 3. denoise the resampled DEM')
   
   denoised.dem.ff.out = paste0(tools::file_path_sans_ext(rsmpld.dem.ff.out),"_DN.tif")
   
   ligrg.sagadenoise(ff.in = rsmpld.dem.ff.out, ff.out = denoised.dem.ff.out )
+  
+  } else {
+    
+    denoised.dem.ff.out = rsmpld.dem.ff.out
+  }
+  
   
   #+++++++++++++++++++++++++++++++++++++++++++++++++
   # Step 4. Get the slope classes
