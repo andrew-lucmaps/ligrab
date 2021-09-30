@@ -1,0 +1,66 @@
+---
+title: "Test rgee"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r}
+# 
+# library(tidyverse)
+# 
+# library(sf)
+library(rgee)
+
+library(installr)
+uninstall.packages("rgee")
+uninstall.packages("reticulate")
+install.packages('reticulate')
+
+library(reticulate)
+use_python("/usr/local/bin/python")
+
+```
+
+
+```{python}
+
+
+
+```
+
+
+
+```{r}
+ee_Initialize()
+
+
+```
+
+
+```{r}
+
+
+rgee::ee_clean_pyenv()
+rgee::ee_install_set_pyenv(py_env = "rgee", py_path="C:/Users/ea-nz/miniconda3/envs/rgee/python.exe")
+
+# 
+# EARTHENGINE_PYTHON='C:/Users/ea-nz/miniconda3/envs/rgee/python.exe'
+# EARTHENGINE_ENV='rgee'
+# saved in: E:\OneDrive - Environmental Analytics\Documents/.Renviron
+
+ee_install()
+  
+```
+
+
+```{r}
+
+ee_Initialize()
+
+
+
+no```
+

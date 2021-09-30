@@ -48,6 +48,10 @@ Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
 
 dataroot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/"
 
+# dataroot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/"
+
+
+
 ```
 
 
@@ -102,7 +106,9 @@ for (i in ligrab_subdirs){
 
 ```{r}
 
-dem_ffn = paste0(dataroot, "GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif")
+# dem_ffn = paste0(dataroot, "GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif")
+dem_ffn = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif")
+
 file.exists(dem_ffn)
 
 ligrg.allsteps(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000)

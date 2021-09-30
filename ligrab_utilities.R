@@ -290,7 +290,7 @@ ligrg.slopeclasses = function(ff.in, dir.out, focal_med_size = 11,slopeclass_rul
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ligrg.reliefclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, reliefclass_ruleset = NULL){
-  
+  # 
   # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
   # ff.out = NULL
   # focal_med_size = 11
@@ -380,6 +380,103 @@ ligrg.reliefclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, relief
   
   
 }
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A LIGrabber RGRASS Function: "ligrg.slopeclasses2" - 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ligrg.slopeclasses2 = function(ff.in, ff.out = NULL, focal_med_size = 11, reliefclass_ruleset = NULL){
+  
+  ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  ff.out = NULL
+  focal_med_size = 11
+  
+  coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/"
+  ruleset_folder = paste0(coderoot, "rulesets/")
+  
+  default_reliefclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_Relief_55m_diameter.txt')
+  # file.exists(default_reliefclass_ruleset_ffname)
+  
+  #if the rule set has not been specified then use 
+  if (is.null(reliefclass_ruleset)){
+    reliefclass_ruleset_ffname = default_reliefclass_ruleset_ffname
+  }
+  
+  
+  
+  if (is.null(ff.out)){ff.out = paste0(dirname(ff.in), "/relief_classes_d",focal_med_size,".tif")}
+  
+  dir.out = paste0(dirname(ff.in),"/")
+  slopes_ff.out = paste0(dir.out, "slopes_d", focal_med_size,".tif")
+  slope_class_ff.out = paste0(dir.out, "slope_classes_d", focal_med_size,".tif")
+  
+  #define all the object names to be used in this script
+  focal_stats_slope_median_output_obj_name = paste0('slope_median_d', focal_med_size)
+  focal_stats_slope_range_output_obj_name = paste0('slope_range_d', focal_med_size)
+  focal_stats_slope_range_cm_output_obj_name = paste0(focal_stats_slope_range_output_obj_name,"_cm")
+  relief_class_obj_name = paste0('relief_class_d', focal_med_size)
+  
+  
+  
+  #read the file
+  ligrg.readraster(ff.in, obj.out = "_dem_to_be_classed_for_relief")
+  
+  
+  #list the raster to idenitfy the correct raster for slope classing
+  dem <- execGRASS('g.list', type = 'raster', pattern = '_dem_to_be_classed_for_relief', intern =TRUE)
+  
+  #create the region
+  execGRASS('g.region', raster = dem)
+  
+  #create focal stats using the median
+  execGRASS('r.neighbors',
+            input = dem,
+            output = focal_stats_slope_median_output_obj_name,
+            method = 'median', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  #take the focal median and calculate the range within the focal area
+  execGRASS('r.neighbors', 
+            input = focal_stats_slope_median_output_obj_name,
+            output = focal_stats_slope_range_output_obj_name,
+            method = 'range', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  # need an integer dataset for r.reclass so convert to cm
+  execGRASS('r.mapcalc', 
+            expression = paste0(focal_stats_slope_range_cm_output_obj_name, ' = round(', focal_stats_slope_median_output_obj_name, ' * 100)'),
+            flags = 'overwrite'
+  )
+  
+  # now reclassify
+  # the ruleset is in cm e.g. 0 thru 82 = 1 Extremely Low
+  execGRASS('r.reclass', 
+            input = focal_stats_slope_range_output_obj_name, 
+            output = relief_class_obj_name,
+            rules = reliefclass_ruleset_ffname,
+            flags = 'overwrite')
+  
+  
+  # obtain the object name
+  relcl <- execGRASS('g.list', 
+                     type = 'raster', 
+                     pattern = relief_class_obj_name,
+                     intern =TRUE)
+  
+  
+  execGRASS('g.region', raster = relcl)
+  
+  execGRASS('r.out.gdal', 
+            input =  relcl,
+            output = ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+}
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
