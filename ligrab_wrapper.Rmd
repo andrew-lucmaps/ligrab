@@ -72,13 +72,6 @@ if (!dir.exists(lig_dir)){dir.create(lig_dir)}
 # getwd()  
 
 
-options(stringsAsFactors = FALSE, scipen = 999)
-# library(raster)
-# library(sf)
-
-
-ligrab_subdirs = c(
-  "cadastral",
   "orthophoto",
   "catchment",
   "landcover",
@@ -87,6 +80,13 @@ ligrab_subdirs = c(
   "elevation",
   "localauthorities",
   "climate",
+options(stringsAsFactors = FALSE, scipen = 999)
+# library(raster)
+# library(sf)
+
+
+ligrab_subdirs = c(
+  "cadastral",
   "derived",
   "LUC",
   "LUS",
@@ -114,5 +114,86 @@ file.exists(dem_ffn)
 ligrg.allsteps(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, area_thresh = 5000)
   
   
+```
+
+# more work 12/10/2021
+
+Check to see if the slope angle function in ligrab_utilities works
+
+```{r}
+
+
+source("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/ligrab_utilities.R")
+
+ffn = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/DEM_resamp_5m.tif"
+
+
+curv.and.slope.sum.ffout = paste0(dirname(ffn),"/curv.and.slope.sum.tif")
+
+file.exists(ffn)
+
+browser()
+
+slope_ruleset = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/rulesets/GRASS_r-reclass_rules_SlopeAngle_HART.txt"
+
+file.exists(slope_ruleset)
+
+slopeangle.ff.out = ligrg.slopeangleclasses(ffn, slopeangleclass_ruleset = slope_ruleset)
+r_slopeangle = raster(slopeangle.ff.out)
+plot(r_slopeangle)
+
+
+plancurv.ff.out = ligrg.curvatureclasses(ffn)
+r_plancurv = raster(plancurv.ff.out)
+plot(r_plancurv)
+
+
+curv.and.slope = stack(r_slopeangle, r_plancurv)
+
+
+
+curv.and.slope.sum = calc(curv.and.slope, sum)
+plot(curv.and.slope.sum)
+
+
+writeRaster(curv.and.slope.sum, curv.and.slope.sum.ffout, overwrite=T)
+
+new = raster(curv.and.slope.sum.ffout)
+
+library(mapview)
+mapView(raster(curv.and.slope.sum.ffout))
+
+
+
+
+ff.out = ligrg.aspectclasses(ffn)
+plot(raster(ff.out))
+
+dem_ffn = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/Grid rasters - covariates/2021_DEM_LiDAR_Omakere_HBRC/merged.tif")
+
+dem = raster(dem_ffn)
+
+raster::crs(dem) <- "EPSG:4326"
+
+```
+
+# problem noted 22/10.2021 - none of the layers are being saved with their CRS
+
+```{r}
+
+
+library(raster)
+
+# read thdem
+
+DEM_ffn = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/DEM_resamp_5m.tif"
+
+r_DEM = raster(DEM_ffn)
+
+crs(r_DEM) <- 2193
+raster::crs(r_DEM) <- "EPSG:2193"
+
+
+
 ```
 

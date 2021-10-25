@@ -1,6 +1,11 @@
 # ligrab_utilities
 
 
+library(rgrass7)
+library(sf)
+library(tidyverse)
+library(raster)
+
 
 
 
@@ -10,6 +15,30 @@
 
 
 coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/"
+setwd(coderoot)
+getwd()
+grass_env_code_ffn =   file.path(getwd(), 'env_scripts', 'grass_env.R')
+file.exists(grass_env_code_ffn)
+
+source(file = grass_env_code_ffn)
+
+
+
+initGRASS(gisBase  = file.path('C:', 'OSGeo4W64', 'apps', 'grass', 'grass78'),
+          gisDbase = file.path('D:', 'Grass'),  location = 'ligrab', 
+          mapset   = "PERMANENT", override = TRUE)
+
+
+# library(rgrass7)
+
+Sys.setenv('SAGA' = file.path(Sys.getenv('OSGEO4W_ROOT'), 'apps', 'saga-ltr'))
+Sys.setenv('PATH' = paste(Sys.getenv("PATH"),
+                          file.path(Sys.getenv('SAGA')),
+                          file.path(Sys.getenv('SAGA'), 'modules'),
+                          sep = .Platform$path.sep))
+
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # settings
@@ -382,98 +411,430 @@ ligrg.reliefclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, relief
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# A LIGrabber RGRASS Function: "ligrg.slopeclasses2" - 
+# A LIGrabber RGRASS Function: "ligrg.slopeangleclasses" - 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-ligrg.slopeclasses2 = function(ff.in, ff.out = NULL, focal_med_size = 11, reliefclass_ruleset = NULL){
+ligrg.slopeangleclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, slopeangleclass_ruleset = NULL){
   
-  ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
-  ff.out = NULL
-  focal_med_size = 11
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  # ff.in = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/", "DEM_resamp_5m.tif")
+  
+  
+  
+  if (!file.exists(ff.in)){print(paste("The input file",ff.in,"could not be found"))}
+  
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  
+  # ff.out = NULL
+  # focal_med_size = 11
   
   coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/"
   ruleset_folder = paste0(coderoot, "rulesets/")
   
-  default_reliefclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_Relief_55m_diameter.txt')
+  default_slopeangleclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_SlopeAngle.txt')
   # file.exists(default_reliefclass_ruleset_ffname)
   
   #if the rule set has not been specified then use 
-  if (is.null(reliefclass_ruleset)){
-    reliefclass_ruleset_ffname = default_reliefclass_ruleset_ffname
+  if (is.null(slopeangleclass_ruleset)){
+    slopeangleclass_ruleset_ffname = default_slopeangleclass_ruleset_ffname
+  }else{
+    
+    slopeangleclass_ruleset_ffname = slopeangleclass_ruleset
+  }
+  if (is.null(ff.out)){
+    ff.out = paste0(dirname(ff.in), "/slope_angle_classes_d",focal_med_size,".tif")
   }
   
-  
-  
-  if (is.null(ff.out)){ff.out = paste0(dirname(ff.in), "/relief_classes_d",focal_med_size,".tif")}
-  
   dir.out = paste0(dirname(ff.in),"/")
-  slopes_ff.out = paste0(dir.out, "slopes_d", focal_med_size,".tif")
-  slope_class_ff.out = paste0(dir.out, "slope_classes_d", focal_med_size,".tif")
+  slope_angle_classess_ff.out = paste0(dir.out, "slope_angle_classes_d", focal_med_size,".tif")
+  
   
   #define all the object names to be used in this script
-  focal_stats_slope_median_output_obj_name = paste0('slope_median_d', focal_med_size)
-  focal_stats_slope_range_output_obj_name = paste0('slope_range_d', focal_med_size)
-  focal_stats_slope_range_cm_output_obj_name = paste0(focal_stats_slope_range_output_obj_name,"_cm")
-  relief_class_obj_name = paste0('relief_class_d', focal_med_size)
+  
+  input_DEM_obj_name = "_dem_to_be_classed_for_slope_angle"
+  slope_angle_output_obj_name = "_slope"
+  focal_stats_slopeangle_median_output_obj_name = paste0('slopeangle_median_d', focal_med_size)
+  focal_stats_slopeangle_range_output_obj_name = paste0('slopeangle_range_d', focal_med_size)
+  focal_stats_slopeangle_range_cm_output_obj_name = paste0(focal_stats_slopeangle_range_output_obj_name,"_cm")
+  slopeangle_class_obj_name = paste0('slopeangle_class_d', focal_med_size)
   
   
   
   #read the file
-  ligrg.readraster(ff.in, obj.out = "_dem_to_be_classed_for_relief")
+  ligrg.readraster(ff.in, obj.out = input_DEM_obj_name)
   
+  # plot(raster(ff.in))
   
-  #list the raster to idenitfy the correct raster for slope classing
-  dem <- execGRASS('g.list', type = 'raster', pattern = '_dem_to_be_classed_for_relief', intern =TRUE)
+  #list the raster to identify the correct raster for slope classing
+  dem <- execGRASS('g.list', type = 'raster', pattern = input_DEM_obj_name, intern =TRUE)
   
   #create the region
   execGRASS('g.region', raster = dem)
   
+  # run the slope aspect algorithm in GRASS
+  execGRASS('r.slope.aspect', 
+            elevation = input_DEM_obj_name, 
+            slope = slope_angle_output_obj_name,
+            format = 'degrees', 
+            precision = 'FCELL',
+            flags = 'overwrite'
+  )
+  
+  
   #create focal stats using the median
   execGRASS('r.neighbors',
-            input = dem,
-            output = focal_stats_slope_median_output_obj_name,
+            input = slope_angle_output_obj_name,
+            output = focal_stats_slopeangle_median_output_obj_name,
             method = 'median', 
             size = focal_med_size, 
             flags = c('c', 'overwrite'))
   
   #take the focal median and calculate the range within the focal area
   execGRASS('r.neighbors', 
-            input = focal_stats_slope_median_output_obj_name,
-            output = focal_stats_slope_range_output_obj_name,
+            input = focal_stats_slopeangle_median_output_obj_name,
+            output = focal_stats_slopeangle_range_output_obj_name,
             method = 'range', 
             size = focal_med_size, 
             flags = c('c', 'overwrite'))
   
   # need an integer dataset for r.reclass so convert to cm
   execGRASS('r.mapcalc', 
-            expression = paste0(focal_stats_slope_range_cm_output_obj_name, ' = round(', focal_stats_slope_median_output_obj_name, ' * 100)'),
+            expression = paste0(focal_stats_slopeangle_range_cm_output_obj_name, 
+                                ' = round(', focal_stats_slopeangle_median_output_obj_name, ')'),
             flags = 'overwrite'
   )
   
   # now reclassify
   # the ruleset is in cm e.g. 0 thru 82 = 1 Extremely Low
   execGRASS('r.reclass', 
-            input = focal_stats_slope_range_output_obj_name, 
-            output = relief_class_obj_name,
-            rules = reliefclass_ruleset_ffname,
+            input = focal_stats_slopeangle_range_output_obj_name, 
+            output = slopeangle_class_obj_name,
+            rules = slopeangleclass_ruleset_ffname,
             flags = 'overwrite')
   
   
   # obtain the object name
-  relcl <- execGRASS('g.list', 
-                     type = 'raster', 
-                     pattern = relief_class_obj_name,
-                     intern =TRUE)
+  slopeanglecl <- execGRASS('g.list', 
+                            type = 'raster', 
+                            pattern = slopeangle_class_obj_name,
+                            intern =TRUE)
   
   
-  execGRASS('g.region', raster = relcl)
+  execGRASS('g.region', raster = slopeanglecl)
   
   execGRASS('r.out.gdal', 
-            input =  relcl,
+            input =  slopeanglecl,
             output = ff.out,
             format = 'GTiff', flags = c('c', 'overwrite'),
             createopt = c('COMPRESS=DEFLATE','TILED=YES'))
   
+  return(ff.out)
+  
+}
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A LIGrabber RGRASS Function: "ligrg.aspectclasses" - 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ligrg.aspectclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, aspectclass_ruleset = NULL){
+  
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  ff.in = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/", "DEM_resamp_5m.tif")
+  file.exists(ff.in)
+  
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  
+  ff.out = NULL
+  aspect_raw_ff.out  = NULL
+  focal_med_size = 11
+  
+  coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/"
+  ruleset_folder = paste0(coderoot, "rulesets/")
+  
+  default_aspectclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_aspect.txt')
+  # file.exists(default_reliefclass_ruleset_ffname)
+  
+  #if the rule set has not been specified then use 
+  if (is.null(aspectclass_ruleset)){
+    aspectclass_ruleset_ffname = default_aspectclass_ruleset_ffname
+  }
+  
+  
+  
+  if (is.null(ff.out)){
+    ff.out = paste0(dirname(ff.in), "/aspect_classes_d",focal_med_size,".tif")
+  }
+  
+  
+  aspect_raw_ff.out = paste0(dirname(ff.in), "/aspect_raw.tif")
+  aspect_focal_median_ff.out = paste0(dirname(ff.in), "/aspect_d",focal_med_size,".tif")
+  
+  
+  dir.out = paste0(dirname(ff.in),"/")
+  aspect_classess_ff.out = paste0(dir.out, "aspect_classes_d", focal_med_size,".tif")
+  
+  
+  #define all the object names to be used in this script
+  
+  
+  input_DEM_obj_name = "_dem_to_be_classed_for_aspect"
+  slope_obj_name = 'slope_'
+  aspect_obj_name = 'aspect_'
+  focal_stats_aspect_median_output_obj_name = paste0('aspect_median_d', focal_med_size)
+  focal_stats_aspect_range_output_obj_name = paste0('aspect_range_d', focal_med_size)
+  focal_stats_aspect_range_int_output_obj_name = paste0(focal_stats_aspect_range_output_obj_name,"_int")
+  aspect_class_obj_name = paste0('aspect_class_d', focal_med_size)
+  
+  
+  
+  
+  #read the file
+  ligrg.readraster(ff.in, obj.out = input_DEM_obj_name)
+  
+  
+  #list the raster to idenitfy the correct raster for aspect classing
+  dem <- execGRASS('g.list', type = 'raster', pattern = '_dem_to_be_classed_for_aspect', intern =TRUE)
+  
+  #create the region
+  execGRASS('g.region', raster = dem)
+  
+  # run the slope aspect algorithm in GRASS
+  execGRASS('r.slope.aspect', 
+            elevation = "_dem_to_be_classed_for_aspect", 
+            slope = 'slope_',
+            aspect = aspect_obj_name,
+            format = 'degrees', 
+            precision = 'FCELL',
+            flags = 'overwrite')
+  
+  
+  #create focal stats using the median
+  execGRASS('r.neighbors',
+            input = 'aspect_',
+            output = focal_stats_aspect_median_output_obj_name,
+            method = 'median', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  #take the focal median and calculate the range within the focal area
+  execGRASS('r.neighbors', 
+            input = focal_stats_aspect_median_output_obj_name,
+            output = focal_stats_aspect_range_output_obj_name,
+            method = 'range', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  # need an integer dataset for r.reclass so convert to integer
+  execGRASS('r.mapcalc', 
+            expression = paste0(focal_stats_aspect_range_int_output_obj_name, 
+                                ' = round(', focal_stats_aspect_median_output_obj_name, ')'),
+            flags = 'overwrite'
+  )
+  
+  # now reclassify
+  # the ruleset is in cm e.g. 0 thru 82 = 1 Extremely Low
+  execGRASS('r.reclass', 
+            input = focal_stats_aspect_median_output_obj_name, 
+            output = aspect_class_obj_name,
+            rules = aspectclass_ruleset_ffname,
+            flags = 'overwrite')
+  
+  
+  # obtain the object name
+  aspectcl <- execGRASS('g.list', 
+                        type = 'raster', 
+                        pattern = aspect_class_obj_name,
+                        intern =TRUE)
+  
+  
+  execGRASS('g.region', raster = aspectcl)
+  
+  execGRASS('r.out.gdal', 
+            input =  aspectcl,
+            output = ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+  execGRASS('r.out.gdal', 
+            input =  'aspect_',
+            output = aspect_raw_ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  execGRASS('r.out.gdal', 
+            input =  focal_stats_aspect_median_output_obj_name,
+            output = aspect_focal_median_ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+  return(ff.out)
+  
+}
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A LIGrabber RGRASS Function: "ligrg.curvatureclasses" - 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ligrg.curvatureclasses = function(ff.in, ff.out = NULL, focal_med_size = 11, curvatureclass_ruleset = NULL){
+  
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_15m.tif"
+  # ff.in = paste0("D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/", "DEM_resamp_5m.tif")
+  # file.exists(ff.in)
+  # curvatureclass_ruleset = NULL
+  
+  
+  
+  #navigate to the folder where ligrsaga put the PlanCurvature *.tif file
+  plancurv_ffn = paste0(dirname(ff.in),"/BasicTerrainLayers_tif/Plan_Curvature.tif")
+  
+  #navigate to the folder where ligrsaga put the PlanCurvature *.tif file
+  plancurv_ffn = paste0(dirname(ff.in),"/BasicTerrainLayers_tif/Plan_Curvature.tif")
+  
+  
+  #check if that file exists and if it doesn't create the plan curvature layer 
+  #using SAGA Basic Terrain Analysis via ligrsaga.BTA
+  
+  if (file.exists(plancurv_ffn)){
+    
+    print(paste("Found a copy of" ,plancurv_ffn))
+    
+  }  else{
+    
+    print(paste("Did not find a copy of" ,plancurv_ffn,"...will create a curvature layer using SAGA BTA"))
+    ligrsaga.BTA(ff.in, thresh = 5)
+  }
+  
+  if (!file.exists(plancurv_ffn)){
+    print(paste("LiGrab Error! - could not find the Plan Curvature file:", plancurv_ffn))
+    stop
+  }
+  
+  
+  ff.out = NULL
+  aspect_raw_ff.out  = NULL
+  focal_med_size = 11
+  
+  coderoot = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/"
+  ruleset_folder = paste0(coderoot, "rulesets/")
+  
+  default_plancurvclass_ruleset_ffname = paste0(ruleset_folder, 'GRASS_r-reclass_rules_PlanCurvature.txt')
+  # file.exists(default_reliefclass_ruleset_ffname)
+  
+  
+  
+  #if the rule set has not been specified then use 
+  if (is.null(curvatureclass_ruleset)){
+    plancurvclass_ruleset_ffname = default_plancurvclass_ruleset_ffname
+  }else{
+    plancurvclass_ruleset_ffname = curvatureclass_ruleset
+  }
+  
+  
+  
+  if (is.null(ff.out)){
+    ff.out = paste0(dirname(ff.in), "/plancurv_classes_d",focal_med_size,".tif")
+  }
+  
+  
+  
+  plancurv_focal_median_ff.out = paste0(dirname(ff.in), "/plancurv_median_d",focal_med_size,".tif")
+  plancurv_raw_ff.out = paste0(dirname(ff.in), "/plancurv.tif")
+  
+  dir.out = paste0(dirname(ff.in),"/")
+  # aspect_classess_ff.out = paste0(dir.out, "aspect_classes_d", focal_med_size,".tif")
+  
+  
+  #define all the object names to be used in this script
+  
+  
+  input_plancurv_obj_name = "_plancurv_input_to_be_classed_for_curvature"
+  focal_stats_plancurv_median_output_obj_name = paste0('plancurv_median_d', focal_med_size)
+  focal_stats_plancurv_range_output_obj_name = paste0('plancurv_range_d', focal_med_size)
+  focal_stats_plancurv_range_int_output_obj_name = paste0(focal_stats_plancurv_range_output_obj_name,"_int")
+  plancurv_class_obj_name = paste0('plancurv_class_d', focal_med_size)
+  
+  
+  
+  
+  #read the file
+  ligrg.readraster(plancurv_ffn, obj.out = input_plancurv_obj_name)
+  
+  
+  #list the raster to idenitfy the correct raster for curvature classing
+  plancurv_raster <- execGRASS('g.list', type = 'raster', pattern = input_plancurv_obj_name, intern =TRUE)
+  
+  #create the region
+  execGRASS('g.region', raster = plancurv_raster)
+  
+  
+  #create focal stats using the median
+  execGRASS('r.neighbors',
+            input = plancurv_raster,
+            output = focal_stats_plancurv_median_output_obj_name,
+            method = 'median', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  #take the focal median and calculate the range within the focal area
+  execGRASS('r.neighbors', 
+            input = focal_stats_plancurv_median_output_obj_name,
+            output = focal_stats_plancurv_range_output_obj_name,
+            method = 'range', 
+            size = focal_med_size, 
+            flags = c('c', 'overwrite'))
+  
+  # need an integer dataset for r.reclass so convert to integer
+  execGRASS('r.mapcalc', 
+            expression = paste0(focal_stats_plancurv_range_int_output_obj_name, 
+                                ' = round(', focal_stats_plancurv_median_output_obj_name, '*1000)'),
+            flags = 'overwrite'
+  )
+  
+  # now reclassify
+  # the ruleset is in cm e.g. 0 thru 82 = 1 Extremely Low
+  execGRASS('r.reclass', 
+            input = focal_stats_plancurv_range_int_output_obj_name, 
+            output = plancurv_class_obj_name,
+            rules = plancurvclass_ruleset_ffname,
+            flags = 'overwrite')
+  
+  
+  # obtain the object name
+  plancurvcl <- execGRASS('g.list', 
+                          type = 'raster', 
+                          pattern = plancurv_class_obj_name,
+                          intern =TRUE)
+  
+  
+  execGRASS('g.region', raster = plancurvcl)
+  
+  execGRASS('r.out.gdal', 
+            input =  plancurvcl,
+            output = ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+  execGRASS('r.out.gdal', 
+            input =  input_plancurv_obj_name,
+            output = plancurv_raw_ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  execGRASS('r.out.gdal', 
+            input =  focal_stats_plancurv_median_output_obj_name,
+            output = plancurv_focal_median_ff.out,
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+  return(ff.out)
   
 }
 
@@ -614,7 +975,7 @@ ligrsaga.execandsave = function(saga.ff.in, tif.ff.out){
             flags =c('e', 'overwrite'))
   
   execGRASS('g.region', raster = 'rast_obj')
-
+  
   #import it back into grass 
   execGRASS('r.out.gdal', 
             input = "rast_obj",
@@ -626,7 +987,7 @@ ligrsaga.execandsave = function(saga.ff.in, tif.ff.out){
   
 }
 
-  
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -634,7 +995,7 @@ ligrsaga.execandsave = function(saga.ff.in, tif.ff.out){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ligrsaga.fillsinks = function(ff.dem.in, minslope = 0.1){
-
+  
   
   # ff.dem.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_resamp_5m.tif"
   ff.filled.out = paste0(tools::file_path_sans_ext(ff.dem.in),"_filled.sdat")
@@ -644,26 +1005,26 @@ ligrsaga.fillsinks = function(ff.dem.in, minslope = 0.1){
   
   ff.filled.out.tif = paste0(tools::file_path_sans_ext(ff.dem.in),"_filled.tif")
   
-# create a list of the parameters for the SAGA command
-args_str = c(
-  'ta_preprocessor', '4',
-  '-ELEV', paste0("\"", ff.dem.in,"\""),
-  '-FILLED',  paste0("\"", ff.filled.out,"\""),
-  '-FDIR',  paste0("\"", ff.fdir.out,"\""),
-  '-WSHED',  paste0("\"", ff.wshed.out,"\""),
-  '-MINSLOPE',  minslope)
-
-# build the command string from the elements of the list above
-str = 'saga_cmd'
-for (i in args_str){str = paste0(str,' ',i)}
-
-# send the SAGA command string to the system
-system(str)
-
-
-ligrsaga.execandsave(ff.filled.out, ff.filled.out.tif)
-
-
+  # create a list of the parameters for the SAGA command
+  args_str = c(
+    'ta_preprocessor', '4',
+    '-ELEV', paste0("\"", ff.dem.in,"\""),
+    '-FILLED',  paste0("\"", ff.filled.out,"\""),
+    '-FDIR',  paste0("\"", ff.fdir.out,"\""),
+    '-WSHED',  paste0("\"", ff.wshed.out,"\""),
+    '-MINSLOPE',  minslope)
+  
+  # build the command string from the elements of the list above
+  str = 'saga_cmd'
+  for (i in args_str){str = paste0(str,' ',i)}
+  
+  # send the SAGA command string to the system
+  system(str)
+  
+  
+  ligrsaga.execandsave(ff.filled.out, ff.filled.out.tif)
+  
+  
 }
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -701,7 +1062,9 @@ ligrsaga.BTA = function(ff.in, thresh = 5){
   
   # thresh = 5
   # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/Development Projects/DP-0046-ligrab-R-Development/gis/layers/elevation/DEM_resamp_5m.tif"
+  # ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/DEM_resamp_5m.tif"
   # 
+  
   
   
   BTA_din_saga = paste0(dirname(ff.in),"/BasicTerrainLayers_saga/")
@@ -749,25 +1112,25 @@ ligrsaga.BTA = function(ff.in, thresh = 5){
     "-VALL_DEPTH",
     "-RSP",
     "-THRESHOLD"
-    )
+  )
   
   output_layers = c(
-  'Analytical_Hillshading',
-  'Slope',
-  'Aspect',
-  'Plan_Curvature',
-  'Profile_Curvature',
-  'Convergence_Index',
-  'Closed_Depressions',
-  'Total_Catchment_Area',
-  'Topographic_Wetness_Index',
-  'LS_Factor',
-  'Channel_Network',
-  'Drainage_Basins',
-  'Channel_Network_Base_Level',
-  'Channel_Network_Distance',
-  'Valley_Depth',
-  'Relative_Slope_Position')
+    'Analytical_Hillshading',
+    'Slope',
+    'Aspect',
+    'Plan_Curvature',
+    'Profile_Curvature',
+    'Convergence_Index',
+    'Closed_Depressions',
+    'Total_Catchment_Area',
+    'Topographic_Wetness_Index',
+    'LS_Factor',
+    'Channel_Network',
+    'Drainage_Basins',
+    'Channel_Network_Base_Level',
+    'Channel_Network_Distance',
+    'Valley_Depth',
+    'Relative_Slope_Position')
   
   
   params_values = c(paste0("\"",ff.in, "\""),
@@ -781,10 +1144,10 @@ ligrsaga.BTA = function(ff.in, thresh = 5){
   }
   
   system(cmd_str)  
-    
+  
   for (i in 1:length(output_layers)){
     
-  
+    
     clayer = output_layers[i]
     saga_ff.in = paste0(BTA_din_saga, clayer, ".sdat")
     
@@ -852,12 +1215,12 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   
   if (denoise){
     
-  print('----> Starting Step 3. denoise the resampled DEM')
-  
-  denoised.dem.ff.out = paste0(tools::file_path_sans_ext(rsmpld.dem.ff.out),"_DN.tif")
-  
-  ligrg.sagadenoise(ff.in = rsmpld.dem.ff.out, ff.out = denoised.dem.ff.out )
-  
+    print('----> Starting Step 3. denoise the resampled DEM')
+    
+    denoised.dem.ff.out = paste0(tools::file_path_sans_ext(rsmpld.dem.ff.out),"_DN.tif")
+    
+    ligrg.sagadenoise(ff.in = rsmpld.dem.ff.out, ff.out = denoised.dem.ff.out )
+    
   } else {
     
     denoised.dem.ff.out = rsmpld.dem.ff.out
@@ -931,5 +1294,131 @@ ligrg.allsteps = function(dem_ffn, lig_dir, dem_rsmpl_res = 5, focal_dist = 11, 
   print("----------       Finished libgrab allsteps!    ----------------------------------------------")
   print("==============================================================================================")
   
-  }
+}
 
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A LIGrabber RGRASS Function: "ligrg.vectorise.classes" - 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ligrg.vectorise.classes = function(rast.ff.in, area_thresh = 5000){
+  
+  
+  rast.ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/curv.and.slope.sum.tif"
+  
+  file.exists(rast.ff.in)
+  raster(rast.ff.in)
+  
+  
+  area_thresh = 5000
+  
+  
+  
+  #define output files
+  vect.ff.out = paste0(tools::file_path_sans_ext(rast.ff.in),"_vect.shp")
+  rerast.ff.out = paste0(tools::file_path_sans_ext(rast.ff.in),"_rerast.tif")
+  
+  #read the file
+  ligrg.readraster(rast.ff.in, obj.out = 'input_raster')
+  
+  
+  # strict vectorisation
+  execGRASS('r.to.vect',
+            input     = 'input_raster',
+            output    = 'vectorised_raster_raw',
+            type      = 'area',
+            flags     = c('v', 'overwrite'))
+  
+  # absorb polygons smaller than threshold area
+  execGRASS('v.clean',
+            input     = 'vectorised_raster_raw',
+            type      = 'area',
+            output    = 'vectorised_raster_cln',
+            tool      = 'rmarea',
+            threshold = area_thresh, #square meters
+            flags     = c('c', 'overwrite'))
+  
+  # write the vector data to a shape file
+  execGRASS('v.out.ogr',
+            input     = 'vectorised_raster_cln',
+            type      = 'area',
+            format    = 'ESRI_Shapefile',
+            output      = vect.ff.out,
+            flags = 'overwrite')
+  
+  
+  
+  # re-rasterise result
+  execGRASS('v.to.rast',
+            input  = 'vectorised_raster_cln',
+            type   = 'area',
+            output = 'rasterised_cln_vector',
+            use    = 'cat', flags = 'overwrite')
+  
+  # export the re-rasterised clean vector file
+  execGRASS('r.out.gdal', 
+            input = 'rasterised_cln_vector', 
+            output = 
+              rerast.ff.out, 
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+}
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# A LIGrabber RGRASS Function: "ligrg.reclassify.slope.plus.curv" - 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ligrg.reclassify.slope.plus.curv = function(rast.ff.in){
+  
+  
+  rast.ff.in = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA team site - Documents/LUCA-A/Projects/2021-07-10-LP0038-R_Hart/GIS/layers/elevation/curv.and.slope.sum.tif"
+  
+  file.exists(rast.ff.in)
+  raster(rast.ff.in)
+  
+  #rule set
+  reclass_rules_plancurv.plus.slope_fn = "GRASS_r-reclass_rules_plancurv.plus.slope.txt"
+  reclass_rules_plancurv.plus.slope_dn = "D:/LUCA Team/Land Use Capability Assessments Limited/LUCA Directors - Documents/Code/RCode/ligrab/rulesets/"
+  reclass_rules_plancurv.plus.slope_ffn = paste0(reclass_rules_plancurv.plus.slope_dn,reclass_rules_plancurv.plus.slope_fn)
+  
+  
+  
+  #define output files
+  reclassed.ff.out = paste0(tools::file_path_sans_ext(rast.ff.in),"_reclassed.tif")
+  
+  #read the file
+  ligrg.readraster(rast.ff.in, obj.out = 'input_raster')
+  
+  
+  
+  # now reclassify
+  # the ruleset is in cm e.g. 0 thru 82 = 1 Extremely Low
+  execGRASS('r.reclass', 
+            input = 'input_raster', 
+            output = 'reclassed_raster',
+            rules = reclass_rules_plancurv.plus.slope_ffn,
+            flags = 'overwrite')
+  
+  
+  # obtain the object name
+  slope.plus.curv_reclassed_obj_name <- execGRASS('g.list', 
+                            type = 'raster', 
+                            pattern = 'reclassed_raster',
+                            intern =TRUE)
+  
+  
+  # export the re-rasterised clean vector file
+  execGRASS('r.out.gdal', 
+            input = slope.plus.curv_reclassed_obj_name, 
+            output = 
+              reclassed.ff.out, 
+            format = 'GTiff', flags = c('c', 'overwrite'),
+            createopt = c('COMPRESS=DEFLATE','TILED=YES'))
+  
+  
+}
